@@ -1,0 +1,1147 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SolidGeo - 几何题目管理系统</title>
+    <!-- 引入外部资源 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    
+    <!-- Tailwind 配置 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3B82F6',
+                        secondary: '#6366F1',
+                        dark: '#1F2937',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    
+    <!-- 自定义工具类 -->
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .sidebar-item {
+                @apply flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-blue-50 hover:text-primary transition-colors duration-200 w-full;
+            }
+            .sidebar-item.active {
+                @apply bg-blue-50 text-primary;
+            }
+            .nav-btn {
+                @apply inline-flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200;
+            }
+            .card {
+                @apply bg-white p-4 rounded-lg shadow-sm border border-gray-100;
+            }
+            .form-input {
+                @apply w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm;
+            }
+            .upload-area {
+                @apply border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-primary transition-colors duration-200 bg-gray-50;
+            }
+            .fade-in {
+                animation: fadeIn 0.3s ease-in-out;
+            }
+            .tag {
+                @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium mr-2 mb-2;
+            }
+            .math-content {
+                @apply font-serif;
+            }
+            @keyframes fadeIn {
+                from { opacity: 0; transform: translateY(10px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen text-dark">
+    <div class="flex h-screen overflow-hidden">
+        <!-- 侧边栏 -->
+        <aside id="sidebar" class="hidden md:flex flex-col w-64 bg-white shadow-sm border-r border-gray-200 transition-all duration-300">
+            <div class="p-5 border-b border-gray-200">
+                <h1 class="text-xl font-bold text-primary flex items-center">
+                    <i class="fa fa-cube mr-3"></i>SolidGeo
+                </h1>
+                <p class="text-sm text-gray-500 mt-1">几何题目管理系统</p>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto py-4">
+                <nav class="px-2 space-y-1">
+                    <a href="#" class="sidebar-item active">
+                        <i class="fa fa-dashboard w-5 text-center"></i>
+                        <span>题目管理</span>
+                    </a>
+                    <a href="#" class="sidebar-item">
+                        <i class="fa fa-database w-5 text-center"></i>
+                        <span>题库统计</span>
+                    </a>
+                    <a href="#" class="sidebar-item">
+                        <i class="fa fa-file-text-o w-5 text-center"></i>
+                        <span>导出数据</span>
+                    </a>
+                    <a href="#" class="sidebar-item">
+                        <i class="fa fa-cog w-5 text-center"></i>
+                        <span>系统设置</span>
+                    </a>
+                </nav>
+            </div>
+            
+            <div class="p-4 border-t border-gray-200">
+                <div class="flex items-center gap-3">
+                    <img src="https://picsum.photos/seed/user123/40/40" alt="用户头像" class="w-10 h-10 rounded-full object-cover">
+                    <div>
+                        <p class="font-medium text-sm">编辑用户</p>
+                        <p class="text-xs text-gray-500">在线</p>
+                    </div>
+                    <button class="ml-auto text-gray-400 hover:text-gray-600">
+                        <i class="fa fa-sign-out"></i>
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- 主内容区 -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <!-- 顶部导航栏 -->
+            <header class="bg-white shadow-sm h-16 flex items-center justify-between px-4 md:px-6 sticky top-0 z-40">
+                <div class="flex items-center">
+                    <button id="sidebarToggle" class="md:hidden text-gray-600 mr-4">
+                        <i class="fa fa-bars text-xl"></i>
+                    </button>
+                    <div class="relative">
+                        <input type="text" placeholder="搜索题目ID或内容..." class="form-input pl-10 pr-4 py-2 w-64 text-sm">
+                        <i class="fa fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                    </div>
+                </div>
+                
+                <div class="flex items-center gap-4">
+                    <!-- 批量下载按钮 -->
+                    <button id="batchDownloadBtn" class="nav-btn bg-gray-100 hover:bg-gray-200">
+                        <i class="fa fa-download"></i>
+                        <span class="hidden sm:inline">批量下载</span>
+                    </button>
+                    
+                    <!-- 导出本地数据按钮 -->
+                    <button id="exportLocalDataBtn" class="nav-btn bg-gray-100 hover:bg-gray-200">
+                        <i class="fa fa-download"></i>
+                        <span class="hidden sm:inline">导出数据</span>
+                    </button>
+                    
+                    <button class="relative text-gray-600 hover:text-primary transition-colors">
+                        <i class="fa fa-bell text-xl"></i>
+                        <span class="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-white text-xs flex items-center justify-center">3</span>
+                    </button>
+                    <button id="helpBtn" class="nav-btn bg-gray-100 hover:bg-gray-200">
+                        <i class="fa fa-question-circle"></i>
+                        <span class="hidden sm:inline">帮助</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- 页面内容滚动区 -->
+            <main class="flex-1 overflow-y-auto p-4 md:p-6">
+                <!-- 页面标题 -->
+                <div class="mb-6">
+                    <h2 class="text-[clamp(1.5rem,3vw,2rem)] font-bold text-gray-800">几何题目编辑</h2>
+                    <p class="text-gray-500 mt-1">管理、编辑和导出几何题目数据</p>
+                </div>
+
+                <!-- 问题导航、ID和文件上传 -->
+                <div class="mb-6 space-y-4">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div class="bg-white p-4 rounded-lg shadow-sm w-full md:w-auto">
+                            <div class="text-sm text-gray-500">ProblemID</div>
+                            <div id="problemId" class="text-xl font-semibold text-primary"></div>
+                        </div>
+                        
+                        <div class="flex flex-wrap gap-3 w-full md:w-auto">
+                            <!-- 批量操作按钮 -->
+                            <div class="relative group">
+                                <button class="nav-btn bg-gray-100 hover:bg-gray-200">
+                                    <i class="fa fa-cog"></i>
+                                    <span>批量操作</span>
+                                    <i class="fa fa-chevron-down text-xs ml-1"></i>
+                                </button>
+                                <div class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 hidden group-hover:block z-10">
+                                    <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" id="batchExport">
+                                        <i class="fa fa-download mr-2"></i>导出选中题目
+                                    </a>
+                                    <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                        <i class="fa fa-trash mr-2"></i>删除选中题目
+                                    </a>
+                                    <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                        <i class="fa fa-copy mr-2"></i>复制选中题目
+                                    </a>
+                                </div>
+                            </div>
+                            
+                            <!-- 批量上传按钮组 -->
+                            <div class="flex gap-2">
+                                <label for="fileUpload" class="nav-btn bg-secondary text-white hover:bg-secondary/90">
+                                    <i class="fa fa-upload"></i>
+                                    <span>上传JSON</span>
+                                    <input type="file" id="fileUpload" accept=".json" class="hidden" multiple>
+                                </label>
+                                
+                                <label for="imageBatchUpload" class="nav-btn bg-purple-500 text-white hover:bg-purple-600">
+                                    <i class="fa fa-picture-o"></i>
+                                    <span>批量传图</span>
+                                    <input type="file" id="imageBatchUpload" accept="image/*" class="hidden" multiple>
+                                </label>
+                            </div>
+                            
+                            <button id="prevBtn" class="nav-btn bg-gray-100 hover:bg-gray-200">
+                                <i class="fa fa-arrow-left"></i>
+                                <span>上一题</span>
+                            </button>
+                            <button id="nextBtn" class="nav-btn bg-primary text-white hover:bg-primary/90">
+                                <span>下一题</span>
+                                <i class="fa fa-arrow-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- 拖放上传区域 - 支持批量上传 -->
+                    <div id="dropArea" class="upload-area">
+                        <i class="fa fa-file-text-o text-4xl text-gray-400 mb-3"></i>
+                        <p class="text-gray-600">拖放JSON文件或图片到这里，或点击上方按钮选择文件</p>
+                        <p class="text-gray-400 text-sm mt-2">支持批量上传几何问题的JSON格式文件和图片</p>
+                    </div>
+                </div>
+
+                <!-- 主要内容区 -->
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    <!-- 左侧：题目和图片显示区 -->
+                    <div class="lg:col-span-7 space-y-6">
+                        <!-- 英文题目 -->
+                        <div class="card">
+                            <h2 class="text-lg font-semibold mb-3 text-gray-800 flex items-center">
+                                <i class="fa fa-file-text-o text-secondary mr-2"></i>英文题干 (problem_text_en)
+                            </h2>
+                            <div id="problemTextEn" class="text-gray-700 leading-relaxed whitespace-pre-line p-3 bg-gray-50 rounded-md min-h-[80px] math-content"></div>
+                        </div>
+
+                        <!-- 中文题目 -->
+                        <div class="card">
+                            <h2 class="text-lg font-semibold mb-3 text-gray-800 flex items-center">
+                                <i class="fa fa-language text-secondary mr-2"></i>中文题干 (problem_text_cn)
+                            </h2>
+                            <textarea id="problemTextCn" class="form-input min-h-[100px] math-content" placeholder="请输入中文题目..."></textarea>
+                        </div>
+
+                        <!-- 图片展示区 -->
+                        <div class="card">
+                            <div class="flex justify-between items-center mb-3">
+                                <h2 class="text-lg font-semibold text-gray-800 flex items-center">
+                                    <i class="fa fa-picture-o text-secondary mr-2"></i>题目图片 (problem_img)
+                                </h2>
+                                <button id="addImageBtn" class="text-sm text-secondary hover:text-primary transition-colors flex items-center">
+                                    <i class="fa fa-plus-circle mr-1"></i> 添加图片
+                                </button>
+                            </div>
+                            <div id="imageContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <!-- 图片将动态加载 -->
+                            </div>
+                        </div>
+
+                        <!-- 答案和解析 -->
+                        <div class="card">
+                            <h2 class="text-lg font-semibold mb-3 text-gray-800 flex items-center">
+                                <i class="fa fa-check-circle text-secondary mr-2"></i>答案与解析 (problem_answer)
+                            </h2>
+                            <textarea id="problemAnswer" class="form-input min-h-[120px] math-content" placeholder="请输入答案和解析..."></textarea>
+                        </div>
+
+                        <!-- 注释信息 -->
+                        <div class="card">
+                            <h2 class="text-lg font-semibold mb-3 text-gray-800 flex items-center">
+                                <i class="fa fa-sticky-note text-secondary mr-2"></i>信息 (annotation)
+                            </h2>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm text-gray-600 mb-1">文本</label>
+                                    <textarea id="annotation" class="form-input min-h-[80px]" placeholder="请输入信息..."></textarea>
+                                </div>
+                                <div>
+                                    <label class="block text-sm text-gray-600 mb-1">图片</label>
+                                    <div class="flex gap-2">
+                                        <input type="text" id="annotationImg" class="form-input" placeholder="请输入图片URL...">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 右侧：信息录入区 -->
+                    <div class="lg:col-span-5 space-y-6">
+                        <!-- 来源 -->
+                        <div class="card">
+                            <h2 class="text-lg font-semibold mb-3 text-gray-800 flex items-center">
+                                <i class="fa fa-database text-secondary mr-2"></i>来源 (source)
+                            </h2>
+                            <input type="text" id="source" class="form-input" placeholder="请输入来源，如教材、试卷等...">
+                        </div>
+
+                        <!-- 题目类型 (支持多类型选择) -->
+                        <div class="card">
+                            <h2 class="text-lg font-semibold mb-3 text-gray-800 flex items-center">
+                                <i class="fa fa-tags text-secondary mr-2"></i>题目类型 (problem_type)
+                            </h2>
+                            <div class="mb-3">
+                                <div class="flex flex-wrap gap-2" id="selectedQuestionTypes">
+                                    <!-- 选中的类型标签将显示在这里 -->
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <label class="flex items-center p-2 border border-gray-200 rounded-md hover:bg-gray-50 cursor-pointer">
+                                    <input type="checkbox" class="question-type-checkbox" value="Multi-view Projection" class="mr-3">
+                                    <span> Multi-view Projection</span>
+                                </label>
+                                <label class="flex items-center p-2 border border-gray-200 rounded-md hover:bg-gray-50 cursor-pointer">
+                                    <input type="checkbox" class="question-type-checkbox" value="Composite Solid Structures" class="mr-3">
+                                    <span> Composite Structures</span>
+                                </label>
+                                <label class="flex items-center p-2 border border-gray-200 rounded-md hover:bg-gray-50 cursor-pointer">
+                                    <input type="checkbox" class="question-type-checkbox" value="Spatial Metric Relations" class="mr-3">
+                                    <span> Spatial Metric Relations</span>
+                                </label>
+                                <label class="flex items-center p-2 border border-gray-200 rounded-md hover:bg-gray-50 cursor-pointer">
+                                    <input type="checkbox" class="question-type-checkbox" value="Planar Unfolding and Configuration" class="mr-3">
+                                    <span> Planar Unfolding and Configuration</span>
+                                </label>
+                                <label class="flex items-center p-2 border border-gray-200 rounded-md hover:bg-gray-50 cursor-pointer">
+                                    <input type="checkbox" class="question-type-checkbox" value="Measurement of Solid Geometric Forms" class="mr-3">
+                                    <span> Measurement of Solid Geometric Forms</span>
+                                </label>
+                                <label class="flex items-center p-2 border border-gray-200 rounded-md hover:bg-gray-50 cursor-pointer">
+                                    <input type="checkbox" class="question-type-checkbox" value="Solid Geometry Modeling" class="mr-3">
+                                    <span> Solid Geometry Modeling</span>
+                                </label>
+                                <label class="flex items-center p-2 border border-gray-200 rounded-md hover:bg-gray-50 cursor-pointer">
+                                    <input type="checkbox" class="question-type-checkbox" value="3D Coordinate and Vector Reasoning" class="mr-3">
+                                    <span> 3D Coordinate and Vector Reasoning</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- 难度级别 -->
+                        <div class="card">
+                            <h2 class="text-lg font-semibold mb-3 text-gray-800 flex items-center">
+                                <i class="fa fa-signal text-secondary mr-2"></i>难度级别 (complexity_level)
+                            </h2>
+                            <select id="complexityLevel" class="form-input">
+                                <option value="">请选择难度级别</option>
+                                <option value="Level 1">Level 1 - 基础</option>
+                                <option value="Level 2">Level 2 - 中等</option>
+                                <option value="Level 3">Level 3 - 进阶</option>
+                                <option value="Level 4">Level 4 - 挑战</option>
+                            </select>
+                        </div>
+
+                        <!-- 构建CDL -->
+                        <div class="card">
+                            <h2 class="text-lg font-semibold mb-3 text-gray-800 flex items-center">
+                                <i class="fa fa-code text-secondary mr-2"></i>构建CDL (construction_cdl)
+                            </h2>
+                            <textarea id="constructionCdl" class="form-input min-h-[120px]" placeholder="请输入构建CDL，每行一个..."></textarea>
+                            <div class="mt-2 text-xs text-gray-500 flex justify-between">
+                                <span>提示：描述几何图形的构成要素</span>
+                                <button class="text-secondary hover:underline" id="addConstructionCdl">
+                                    <i class="fa fa-plus mr-1"></i> 添加常用项
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 文本CDL -->
+                        <div class="card">
+                            <h2 class="text-lg font-semibold mb-3 text-gray-800 flex items-center">
+                                <i class="fa fa-file-text text-secondary mr-2"></i>文本CDL (text_cdl)
+                            </h2>
+                            <textarea id="textCdl" class="form-input min-h-[120px]" placeholder="请输入文本CDL，每行一个..."></textarea>
+                        </div>
+
+                        <!-- 图片CDL -->
+                        <div class="card">
+                            <h2 class="text-lg font-semibold mb-3 text-gray-800 flex items-center">
+                                <i class="fa fa-picture-o text-secondary mr-2"></i>图片CDL (image_cdl)
+                            </h2>
+                            <textarea id="imageCdl" class="form-input min-h-[120px]" placeholder="请输入图片CDL，每行一个..."></textarea>
+                        </div>
+
+                        <!-- 目标CDL -->
+                        <div class="card">
+                            <h2 class="text-lg font-semibold mb-3 text-gray-800 flex items-center">
+                                <i class="fa fa-bullseye text-secondary mr-2"></i>目标CDL (goal_cdl)
+                            </h2>
+                            <textarea id="goalCdl" class="form-input min-h-[80px]" placeholder="请输入目标CDL..."></textarea>
+                        </div>
+
+                        <!-- 定理序列 -->
+                        <div class="card">
+                            <h2 class="text-lg font-semibold mb-3 text-gray-800 flex items-center">
+                                <i class="fa fa-list-ol text-secondary mr-2"></i>定理序列 (theorem_seqs)
+                            </h2>
+                            <input type="text" id="theoremSeqs" class="form-input" placeholder="请输入定理序列，用逗号分隔...">
+                        </div>
+
+                        <!-- 保存按钮 -->
+                        <div class="card flex justify-end p-6">
+                            <button id="saveBtn" class="nav-btn bg-green-500 text-white hover:bg-green-600 px-6">
+                                <i class="fa fa-save mr-2"></i>保存题目
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- 通知组件 -->
+    <div id="notification" class="fixed bottom-6 right-6 px-6 py-3 rounded-lg shadow-lg transform translate-y-20 opacity-0 transition-all duration-300 flex items-center z-50"></div>
+
+    <!-- 帮助模态框 -->
+    <div id="helpModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <div class="p-6 border-b border-gray-200 flex justify-between items-center">
+                <h3 class="text-xl font-bold text-gray-800">使用帮助</h3>
+                <button class="modal-close text-gray-500 hover:text-gray-700">
+                    <i class="fa fa-times text-xl"></i>
+                </button>
+            </div>
+            <div class="p-6">
+                <div class="space-y-6">
+                    <section>
+                        <h4 class="text-lg font-semibold text-gray-800 mb-3">基本操作</h4>
+                        <ul class="list-disc pl-5 space-y-2 text-gray-700">
+                            <li>点击"上一题"或"下一题"按钮切换题目</li>
+                            <li>使用左右方向键也可以快速切换题目</li>
+                            <li>编辑完成后点击"保存"按钮保存当前题目</li>
+                        </ul>
+                    </section>
+                    
+                    <section>
+                        <h4 class="text-lg font-semibold text-gray-800 mb-3">搜索功能</h4>
+                        <p class="text-gray-700 mb-2">在顶部搜索框中输入关键词可以搜索：</p>
+                        <ul class="list-disc pl-5 space-y-1 text-gray-700">
+                            <li>题目ID</li>
+                            <li>中文题干内容</li>
+                            <li>英文题干内容</li>
+                            <li>题目来源</li>
+                        </ul>
+                    </section>
+                    
+                    <section>
+                        <h4 class="text-lg font-semibold text-gray-800 mb-3">文件上传</h4>
+                        <p class="text-gray-700 mb-2">支持上传JSON格式的题目数据和图片：</p>
+                        <ul class="list-disc pl-5 space-y-1 text-gray-700">
+                            <li>单次最多上传3113个文件</li>
+                            <li>图片支持常见格式（JPG、PNG、GIF等）</li>
+                            <li>可以拖放文件到上传区域进行上传</li>
+                        </ul>
+                    </section>
+                    
+                    <section>
+                        <h4 class="text-lg font-semibold text-gray-800 mb-3">数据保存</h4>
+                        <p class="text-gray-700 mb-2">题目数据保存在浏览器本地，特点：</p>
+                        <ul class="list-disc pl-5 space-y-1 text-gray-700">
+                            <li>无需后端服务器，离线可用</li>
+                            <li>关闭浏览器后数据不会丢失</li>
+                            <li>建议定期使用"导出数据"备份</li>
+                            <li>清除浏览器数据会导致数据丢失</li>
+                        </ul>
+                    </section>
+                </div>
+            </div>
+            <div class="p-4 bg-gray-50 rounded-b-lg text-right">
+                <button class="modal-close bg-primary text-white px-4 py-2 rounded hover:bg-primary/90">
+                    我知道了
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        const BACKEND_URL = 'http://localhost:3000';
+        let loadedProblems = new Map(); // 存储所有加载的题目
+        let currentProblemId = '';      // 当前题目的ID
+
+        // 初始化应用
+        document.addEventListener('DOMContentLoaded', initApp);
+
+        function initApp() {
+            // 初始化侧边栏切换
+            initSidebarToggle();
+            
+            // 初始化题目类型选择
+            initQuestionTypeSelection();
+            
+            // 初始化文件上传和拖放功能
+            initFileUpload();
+            
+            // 初始化图片管理
+            initImageManagement();
+            
+            // 初始化保存功能（使用localStorage）
+            initSaveFunction();
+            
+            // 初始化搜索功能
+            initSearch();
+            
+            // 初始化上下题导航
+            initNavigation();
+            
+            // 初始化帮助功能
+            initHelpFunction();
+            
+            // 初始化模态框关闭功能
+            initModalClose();
+            
+            // 初始化本地数据导出功能
+            initExportLocalData();
+            
+            // 从localStorage加载数据
+            loadFromLocalStorage();
+            
+            // 如果没有本地数据，加载示例数据
+            if (loadedProblems.size === 0) {
+                loadSampleData();
+            }
+        }
+
+        // 侧边栏切换
+        function initSidebarToggle() {
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            const sidebar = document.getElementById('sidebar');
+            
+            if (sidebarToggle && sidebar) {
+                sidebarToggle.addEventListener('click', () => {
+                    sidebar.classList.toggle('hidden');
+                    sidebar.classList.toggle('flex');
+                });
+            }
+        }
+
+        // 题目类型选择
+        function initQuestionTypeSelection() {
+            const checkboxes = document.querySelectorAll('.question-type-checkbox');
+            const selectedContainer = document.getElementById('selectedQuestionTypes');
+            
+            checkboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', function() {
+                    updateSelectedTypes();
+                });
+            });
+            
+            function updateSelectedTypes() {
+                selectedContainer.innerHTML = '';
+                const selectedTypes = Array.from(checkboxes)
+                    .filter(cb => cb.checked)
+                    .map(cb => cb.value);
+                
+                selectedTypes.forEach(type => {
+                    const tag = document.createElement('span');
+                    tag.className = 'tag bg-blue-100 text-blue-800';
+                    tag.innerHTML = `${type} <button class="ml-1 text-blue-600 hover:text-blue-800" data-type="${type}">
+                        <i class="fa fa-times-circle"></i>
+                    </button>`;
+                    selectedContainer.appendChild(tag);
+                    
+                    // 标签移除按钮事件
+                    tag.querySelector('button').addEventListener('click', function() {
+                        const typeToRemove = this.getAttribute('data-type');
+                        checkboxes.forEach(cb => {
+                            if (cb.value === typeToRemove) {
+                                cb.checked = false;
+                            }
+                        });
+                        updateSelectedTypes();
+                    });
+                });
+            }
+        }
+
+        // 文件上传和拖放功能
+        function initFileUpload() {
+            const dropArea = document.getElementById('dropArea');
+            const fileInput = document.getElementById('fileUpload');
+            const imageInput = document.getElementById('imageBatchUpload');
+            const maxFiles = 3113; // 最大文件上传数量
+            
+            // 处理文件上传限制
+            [fileInput, imageInput].forEach(input => {
+                if (input) {
+                    input.addEventListener('change', function(e) {
+                        if (this.files.length > maxFiles) {
+                            showNotification(`最多只能上传${maxFiles}个文件`, 'error');
+                            this.value = ''; // 清空选择
+                        } else if (this.files.length > 0) {
+                            handleFiles(this.files);
+                        }
+                    });
+                }
+            });
+            
+            // 拖放功能
+            if (dropArea) {
+                ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                    dropArea.addEventListener(eventName, preventDefaults, false);
+                });
+                
+                function preventDefaults(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+                
+                ['dragenter', 'dragover'].forEach(eventName => {
+                    dropArea.addEventListener(eventName, highlight, false);
+                });
+                
+                ['dragleave', 'drop'].forEach(eventName => {
+                    dropArea.addEventListener(eventName, unhighlight, false);
+                });
+                
+                function highlight() {
+                    dropArea.classList.add('border-primary');
+                    dropArea.classList.add('bg-blue-50');
+                }
+                
+                function unhighlight() {
+                    dropArea.classList.remove('border-primary');
+                    dropArea.classList.remove('bg-blue-50');
+                }
+                
+                dropArea.addEventListener('drop', handleDrop, false);
+                
+                function handleDrop(e) {
+                    const dt = e.dataTransfer;
+                    const files = dt.files;
+                    
+                    if (files.length > maxFiles) {
+                        showNotification(`最多只能上传${maxFiles}个文件`, 'error');
+                        return;
+                    }
+                    
+                    handleFiles(files);
+                }
+            }
+            
+            // 处理上传的文件
+            function handleFiles(files) {
+                if (!files.length) return;
+                
+                const jsonFiles = [];
+                const imageFiles = [];
+                
+                // 分离JSON文件和图片文件
+                Array.from(files).forEach(file => {
+                    if (file.type === 'application/json' || file.name.endsWith('.json')) {
+                        jsonFiles.push(file);
+                    } else if (file.type.startsWith('image/')) {
+                        imageFiles.push(file);
+                    }
+                });
+                
+                // 处理JSON文件
+                if (jsonFiles.length > 0) {
+                    jsonFiles.forEach(file => {
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            try {
+                                const problemData = JSON.parse(e.target.result);
+                                if (problemData.problem_id) {
+                                    loadedProblems.set(problemData.problem_id, problemData);
+                                    // 同时保存到localStorage
+                                    saveToLocalStorageWithoutUI(problemData);
+                                    showNotification(`已加载题目: ${problemData.problem_id}`, 'success');
+                                    
+                                    // 如果是第一个加载的题目，自动显示
+                                    if (!currentProblemId) {
+                                        currentProblemId = problemData.problem_id;
+                                        loadProblem(currentProblemId);
+                                    }
+                                }
+                            } catch (error) {
+                                showNotification(`解析JSON失败: ${file.name}`, 'error');
+                                console.error('JSON解析错误:', error);
+                            }
+                        };
+                        reader.readAsText(file);
+                    });
+                }
+                
+                // 处理图片文件
+                if (imageFiles.length > 0) {
+                    imageFiles.forEach(file => {
+                        // 这里只是前端预览，实际应用中应该上传到服务器
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            addImageToContainer(e.target.result);
+                            showNotification(`已添加图片: ${file.name}`, 'success');
+                        };
+                        reader.readAsDataURL(file);
+                    });
+                }
+            }
+        }
+
+        // 图片管理
+        function initImageManagement() {
+            const addImageBtn = document.getElementById('addImageBtn');
+            const imageContainer = document.getElementById('imageContainer');
+            
+            if (addImageBtn) {
+                addImageBtn.addEventListener('click', function() {
+                    const imageUrl = prompt('请输入图片URL:');
+                    if (imageUrl && imageUrl.trim()) {
+                        addImageToContainer(imageUrl.trim());
+                    }
+                });
+            }
+            
+            // 添加图片到容器
+            window.addImageToContainer = function(url) {
+                const imgWrapper = document.createElement('div');
+                imgWrapper.className = 'relative group';
+                
+                const img = document.createElement('img');
+                img.src = url;
+                img.className = 'w-full h-48 object-contain border border-gray-200 rounded-md p-2 bg-white';
+                img.alt = '题目图片';
+                img.onload = function() {
+                    img.classList.add('fade-in');
+                };
+                img.onerror = function() {
+                    showNotification('图片加载失败', 'error');
+                    imgWrapper.remove();
+                };
+                
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity';
+                deleteBtn.innerHTML = '<i class="fa fa-times text-xs"></i>';
+                deleteBtn.addEventListener('click', function() {
+                    imgWrapper.remove();
+                });
+                
+                imgWrapper.appendChild(img);
+                imgWrapper.appendChild(deleteBtn);
+                imageContainer.appendChild(imgWrapper);
+            };
+            
+            // 获取图片列表
+            window.getImageList = function() {
+                const images = [];
+                document.querySelectorAll('#imageContainer img').forEach(img => {
+                    images.push(img.src);
+                });
+                return images;
+            };
+        }
+
+        // 保存功能（使用localStorage）
+        function initSaveFunction() {
+            const saveBtn = document.getElementById('saveBtn');
+            if (saveBtn) {
+                saveBtn.addEventListener('click', saveToLocalStorage);
+            }
+        }
+
+        // 保存到localStorage（带UI状态变化）
+        function saveToLocalStorage() {
+            // 收集表单数据
+            const formData = collectFormData();
+            
+            // 显示加载状态
+            const saveBtn = document.getElementById('saveBtn');
+            const originalText = saveBtn.innerHTML;
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> 保存中...';
+            
+            try {
+                // 实际保存操作
+                saveToLocalStorageWithoutUI(formData);
+                
+                showNotification('题目已成功保存到本地', 'success');
+            } catch (error) {
+                showNotification(`保存失败: ${error.message}`, 'error');
+                console.error('保存到localStorage错误:', error);
+            } finally {
+                // 恢复按钮状态
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = originalText;
+            }
+        }
+
+        // 保存到localStorage（不带UI状态变化，用于内部调用）
+        function saveToLocalStorageWithoutUI(formData) {
+            // 获取已存储的所有题目
+            let allProblems = JSON.parse(localStorage.getItem('solidGeoProblems') || '{}');
+            
+            // 更新当前题目
+            allProblems[formData.problem_id] = formData;
+            
+            // 保存回localStorage
+            localStorage.setItem('solidGeoProblems', JSON.stringify(allProblems));
+            
+            // 更新内存中的题目数据
+            loadedProblems.set(formData.problem_id, formData);
+        }
+
+        // 从localStorage加载数据
+        function loadFromLocalStorage() {
+            try {
+                // 获取存储的所有题目
+                const allProblems = JSON.parse(localStorage.getItem('solidGeoProblems') || '{}');
+                
+                // 转换为Map存储
+                Object.keys(allProblems).forEach(problemId => {
+                    loadedProblems.set(problemId, allProblems[problemId]);
+                });
+                
+                // 如果有存储的题目，加载第一个
+                if (loadedProblems.size > 0 && !currentProblemId) {
+                    const firstProblemId = Array.from(loadedProblems.keys())[0];
+                    currentProblemId = firstProblemId;
+                    loadProblem(currentProblemId);
+                    showNotification(`已加载 ${loadedProblems.size} 个本地题目`, 'info');
+                }
+            } catch (error) {
+                console.error('从localStorage加载数据错误:', error);
+                // 如果本地存储数据损坏，清空并重新开始
+                if (confirm('本地存储的数据损坏，是否清空并重新开始？')) {
+                    localStorage.removeItem('solidGeoProblems');
+                    loadedProblems.clear();
+                }
+            }
+        }
+
+        // 本地数据导出功能
+        function initExportLocalData() {
+            const exportBtn = document.getElementById('exportLocalDataBtn');
+            if (exportBtn) {
+                exportBtn.addEventListener('click', function() {
+                    try {
+                        const allProblems = JSON.parse(localStorage.getItem('solidGeoProblems') || '{}');
+                        const jsonData = JSON.stringify(allProblems, null, 2);
+                        
+                        // 创建下载链接
+                        const blob = new Blob([jsonData], { type: 'application/json' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `solidgeo_data_${new Date().toISOString().slice(0,10)}.json`;
+                        document.body.appendChild(a);
+                        a.click();
+                        
+                        // 清理
+                        setTimeout(() => {
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(url);
+                        }, 0);
+                        
+                        showNotification('本地数据已导出', 'success');
+                    } catch (error) {
+                        showNotification(`导出失败: ${error.message}`, 'error');
+                    }
+                });
+            }
+        }
+
+        // 收集表单数据
+        function collectFormData() {
+            // 收集题目类型
+            const problemTypes = [];
+            document.querySelectorAll('.question-type-checkbox:checked').forEach(checkbox => {
+                problemTypes.push(checkbox.value);
+            });
+            
+            return {
+                problem_id: currentProblemId || generateNewProblemId(),
+                annotation: document.getElementById('annotation').value,
+                annotation_img: document.getElementById('annotationImg').value,
+                source: document.getElementById('source').value,
+                problem_text_cn: document.getElementById('problemTextCn').value,
+                problem_text_en: document.getElementById('problemTextEn').textContent,
+                problem_img: getImageList(),
+                construction_cdl: document.getElementById('constructionCdl').value.split('\n').filter(line => line.trim() !== ''),
+                text_cdl: document.getElementById('textCdl').value.split('\n').filter(line => line.trim() !== ''),
+                image_cdl: document.getElementById('imageCdl').value.split('\n').filter(line => line.trim() !== ''),
+                goal_cdl: document.getElementById('goalCdl').value,
+                problem_answer: document.getElementById('problemAnswer').value,
+                problem_type: problemTypes,
+                complexity_level: document.getElementById('complexityLevel').value,
+                theorem_seqs: document.getElementById('theoremSeqs').value.split(',').map(seq => seq.trim()).filter(seq => seq !== '')
+            };
+        }
+
+        // 生成新的题目ID
+        function generateNewProblemId() {
+            const date = new Date();
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+            return `GEO-${year}${month}${day}-${random}`;
+        }
+
+        // 搜索功能实现
+        function initSearch() {
+            const searchInput = document.querySelector('input[placeholder="搜索题目ID或内容..."]');
+            if (!searchInput) return;
+
+            searchInput.addEventListener('input', function(e) {
+                const searchTerm = e.target.value.trim().toLowerCase();
+                if (searchTerm.length < 1) {
+                    // 搜索词太短时显示所有题目
+                    if (loadedProblems.size > 0 && currentProblemId) {
+                        loadProblem(currentProblemId);
+                    }
+                    return;
+                }
+
+                // 搜索逻辑
+                const filteredProblems = Array.from(loadedProblems.values()).filter(problem => {
+                    // 搜索题目ID
+                    if (problem.problem_id.toLowerCase().includes(searchTerm)) return true;
+                    // 搜索中文题干
+                    if (problem.problem_text_cn && problem.problem_text_cn.toLowerCase().includes(searchTerm)) return true;
+                    // 搜索英文题干
+                    if (problem.problem_text_en && problem.problem_text_en.toLowerCase().includes(searchTerm)) return true;
+                    // 搜索来源
+                    if (problem.source && problem.source.toLowerCase().includes(searchTerm)) return true;
+                    return false;
+                });
+
+                // 显示搜索结果
+                if (filteredProblems.length > 0) {
+                    currentProblemId = filteredProblems[0].problem_id;
+                    loadProblem(currentProblemId);
+                    showNotification(`找到 ${filteredProblems.length} 个匹配题目`, 'info');
+                } else {
+                    showNotification('未找到匹配的题目', 'info');
+                }
+            });
+
+            // 按Enter键触发搜索
+            searchInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                }
+            });
+        }
+
+        // 上一题/下一题导航功能
+        function initNavigation() {
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            if (!prevBtn || !nextBtn) return;
+
+            // 上一题
+            prevBtn.addEventListener('click', function() {
+                navigateProblem(-1);
+            });
+
+            // 下一题
+            nextBtn.addEventListener('click', function() {
+                navigateProblem(1);
+            });
+
+            // 键盘导航（左箭头/右箭头）
+            document.addEventListener('keydown', function(e) {
+                // 避免在输入框中时触发导航
+                const activeElement = document.activeElement;
+                if (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA') {
+                    return;
+                }
+
+                if (e.key === 'ArrowLeft') {
+                    navigateProblem(-1);
+                } else if (e.key === 'ArrowRight') {
+                    navigateProblem(1);
+                }
+            });
+        }
+
+        // 导航逻辑
+        function navigateProblem(direction) {
+            if (loadedProblems.size <= 1) return;
+
+            const problemIds = Array.from(loadedProblems.keys());
+            const currentIndex = problemIds.indexOf(currentProblemId);
+            
+            if (currentIndex === -1) return;
+
+            let newIndex;
+            if (direction === -1) {
+                // 上一题
+                newIndex = currentIndex > 0 ? currentIndex - 1 : problemIds.length - 1;
+            } else {
+                // 下一题
+                newIndex = currentIndex < problemIds.length - 1 ? currentIndex + 1 : 0;
+            }
+
+            const newProblemId = problemIds[newIndex];
+            if (newProblemId) {
+                currentProblemId = newProblemId;
+                loadProblem(newProblemId);
+                showNotification(`已切换到题目 ${newProblemId}`, 'info');
+            }
+        }
+
+        // 加载题目数据
+        function loadProblem(problemId) {
+            const problem = loadedProblems.get(problemId);
+            if (!problem) return;
+
+            // 填充表单数据
+            document.getElementById('problemId').textContent = problem.problem_id;
+            document.getElementById('annotation').value = problem.annotation || '';
+            document.getElementById('annotationImg').value = problem.annotation_img || '';
+            document.getElementById('source').value = problem.source || '';
+            document.getElementById('problemTextCn').value = problem.problem_text_cn || '';
+            document.getElementById('problemTextEn').textContent = problem.problem_text_en || '';
+            document.getElementById('problemAnswer').value = problem.problem_answer || '';
+            document.getElementById('complexityLevel').value = problem.complexity_level || '';
+            document.getElementById('constructionCdl').value = problem.construction_cdl ? problem.construction_cdl.join('\n') : '';
+            document.getElementById('textCdl').value = problem.text_cdl ? problem.text_cdl.join('\n') : '';
+            document.getElementById('imageCdl').value = problem.image_cdl ? problem.image_cdl.join('\n') : '';
+            document.getElementById('goalCdl').value = problem.goal_cdl || '';
+            document.getElementById('theoremSeqs').value = problem.theorem_seqs ? problem.theorem_seqs.join(', ') : '';
+
+            // 加载图片
+            const imageContainer = document.getElementById('imageContainer');
+            imageContainer.innerHTML = '';
+            if (problem.problem_img && Array.isArray(problem.problem_img)) {
+                problem.problem_img.forEach(imgUrl => {
+                    addImageToContainer(imgUrl);
+                });
+            }
+
+            // 加载题目类型
+            const checkboxes = document.querySelectorAll('.question-type-checkbox');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = problem.problem_type && problem.problem_type.includes(checkbox.value);
+            });
+            // 更新选中的类型标签
+            document.querySelectorAll('.question-type-checkbox')[0].dispatchEvent(new Event('change'));
+        }
+
+        // 帮助功能初始化
+        function initHelpFunction() {
+            const helpBtn = document.getElementById('helpBtn');
+            const helpModal = document.getElementById('helpModal');
+            
+            if (!helpBtn || !helpModal) return;
+            
+            // 打开帮助模态框
+            helpBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                helpModal.classList.remove('hidden');
+                helpModal.classList.add('flex');
+                document.body.classList.add('overflow-hidden');
+            });
+        }
+
+        // 模态框关闭功能
+        function initModalClose() {
+            // 关闭按钮和遮罩层点击关闭
+            document.querySelectorAll('.modal-close, #helpModal').forEach(elem => {
+                elem.addEventListener('click', function(e) {
+                    // 只有点击遮罩层或关闭按钮才关闭
+                    if (this.classList.contains('modal-close') || this.id === 'helpModal') {
+                        const modal = document.getElementById('helpModal');
+                        if (modal) {
+                            modal.classList.add('hidden');
+                            modal.classList.remove('flex');
+                            document.body.classList.remove('overflow-hidden');
+                        }
+                    }
+                });
+            });
+
+            // 按ESC键关闭模态框
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    const modal = document.getElementById('helpModal');
+                    if (modal && !modal.classList.contains('hidden')) {
+                        modal.classList.add('hidden');
+                        modal.classList.remove('flex');
+                        document.body.classList.remove('overflow-hidden');
+                    }
+                }
+            });
+        }
+
+        // 显示通知
+        function showNotification(message, type = 'info') {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            
+            // 设置样式
+            notification.className = 'fixed bottom-6 right-6 px-6 py-3 rounded-lg shadow-lg transform translate-y-0 opacity-100 transition-all duration-300 flex items-center z-50';
+            
+            if (type === 'success') {
+                notification.classList.add('bg-green-500', 'text-white');
+            } else if (type === 'error') {
+                notification.classList.add('bg-red-500', 'text-white');
+            } else {
+                notification.classList.add('bg-blue-500', 'text-white');
+            }
+            
+            // 3秒后隐藏
+            setTimeout(() => {
+                notification.classList.remove('translate-y-0', 'opacity-100');
+                notification.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+
+        // 加载示例数据
+        function loadSampleData() {
+            // 示例题目数据
+            const sampleProblems = [
+                {
+                    problem_id: 'GEO-2023-001',
+                    annotation: '基础立体几何题目',
+                    annotation_img: '',
+                    source: '高中数学教材',
+                    problem_text_cn: '一个正方体的棱长为5cm，求它的表面积和体积。',
+                    problem_text_en: 'The edge length of a cube is 5cm, find its surface area and volume.',
+                    problem_img: ['https://picsum.photos/seed/cube1/300/200'],
+                    construction_cdl: ['cube(1)', 'edge_length(1,5)'],
+                    text_cdl: ['surface_area', 'volume', 'cube'],
+                    image_cdl: ['cube_diagram'],
+                    goal_cdl: 'calculate_surface_area_and_volume',
+                    problem_answer: '表面积：6×5²=150cm²，体积：5³=125cm³',
+                    problem_type: ['Measurement of Solid Geometric Forms'],
+                    complexity_level: 'Level 1',
+                    theorem_seqs: ['cube_formula']
+                }
+            ];
+            
+            // 添加到题库并保存到localStorage
+            sampleProblems.forEach(problem => {
+                loadedProblems.set(problem.problem_id, problem);
+                saveToLocalStorageWithoutUI(problem);
+            });
+            
+            // 加载第一个题目
+            if (sampleProblems.length > 0) {
+                currentProblemId = sampleProblems[0].problem_id;
+                loadProblem(currentProblemId);
+            }
+        }
+    </script>
+</body>
+</html>
